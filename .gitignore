@@ -1,0 +1,21 @@
+# Environments and local configuration
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+__pycache__/
+.ipynb_checkpoints/
+
+# Local datasets and generated outputs
+data/raw/*
+data/processed/*
+outputs/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!outputs/.gitkeep
+
+# Local secrets and exports
+*.csv
+*.parquet
+*.sqlite
