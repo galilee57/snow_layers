@@ -5,7 +5,9 @@ venv/
 .env.*
 !.env.example
 __pycache__/
+node_modules/
 .ipynb_checkpoints/
+.DS_Store
 
 # Local datasets and generated outputs
 data/raw/*

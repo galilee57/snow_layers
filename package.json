@@ -1,0 +1,13 @@
+{
+  "name": "meribel-snow-layers",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/input.css -o ./static/styles.css --minify",
+    "watch:css": "tailwindcss -i ./static/input.css -o ./static/styles.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.13",
+    "tailwindcss": "^4.1.13"
+  }
+}

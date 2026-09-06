@@ -4,6 +4,50 @@ Projet d'étude de l'évolution de l'enneigement de la station de Méribel, avec
 pour objectif de reproduire puis actualiser un graphique trouvé dans un
 article à partir de données météorologiques accessibles par API.
 
+## Prototype web
+
+Un premier prototype local est disponible. Il présente l'évolution de la
+hauteur de neige par saison avec un sélecteur interactif et une API JSON.
+Pour l'instant, les valeurs sont simulées : aucune API externe n'est appelée.
+
+Sur macOS, double-cliquer sur `start_meribel_snow.command`, ou lancer :
+
+```bash
+./start_meribel_snow.command
+```
+
+Le lanceur crée `.venv`, installe les dépendances puis ouvre
+`http://127.0.0.1:5000`. Garder la fenêtre Terminal ouverte pendant
+l'utilisation ; `Ctrl+C` arrête le serveur.
+
+L'API du prototype est accessible à `GET /api/snow-depth`. Son contrat est
+prêt à recevoir une source réelle sans modifier l'interface.
+
+Les choix graphiques sont détaillés dans [DESIGN.md](DESIGN.md).
+
+### Importer une saison réelle
+
+Le projet utilise désormais [Open-Meteo Archive](https://open-meteo.com/en/docs/historical-weather-api),
+une API ouverte sans clé. Elle fournit une **réanalyse modélisée** de la hauteur
+de neige au sol ; ce n'est pas une mesure relevée à la station. Les valeurs
+horaires sont converties de mètres en centimètres puis moyennées par journée.
+
+Importer une saison complète dans la base SQLite locale :
+
+```bash
+PYTHONPATH=src .venv/bin/python -m snow_layers.import_open_meteo --season 2024-2025
+```
+
+La base est créée dans `data/snow_layers.sqlite` et reste ignorée par Git. Vous
+pouvez importer plusieurs saisons ; la même commande met à jour les jours déjà
+présents. Redémarrer ensuite l'application. Dès qu'une saison est présente, le
+prototype remplace ses données simulées par les observations importées.
+
+La base comprend `stations` (position et altitude de référence) et
+`snow_observations` (date, hauteur en cm, source, URL de la requête et date
+d'import). Une contrainte d'unicité empêche les doublons pour une même station,
+date et source.
+
 ## État du projet
 
 Le dépôt contient actuellement les premiers essais exploratoires :
@@ -31,10 +75,19 @@ payante, et la clé présente dans l'ancien notebook ne doit pas être réutilis
 
 ## Démarrage
 
-Créer un environnement Python puis installer les dépendances du futur pipeline
-(`pandas`, `requests` ou `httpx`, et une bibliothèque de visualisation comme
-`matplotlib` ou `plotly`). Les dépendances seront figées dans un fichier
-`requirements.txt` lorsque la source de données sera choisie.
+Créer un environnement Python puis installer les dépendances :
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+Pour exécuter les tests, installer aussi les dépendances de développement :
+
+```bash
+.venv/bin/python -m pip install -r requirements-dev.txt
+PYTHONPATH=src .venv/bin/python -m pytest
+```
 
 Lancer ensuite Jupyter depuis la racine :
 
@@ -61,11 +114,15 @@ réutilisation.
 ```text
 .
 ├── AGENTS.md
+├── DESIGN.md       # décisions visuelles du prototype
 ├── README.md
+├── app.py          # point d'entrée de l'application Flask
 ├── notebooks/       # explorations et analyses reproductibles
 ├── reference/       # documents visuels utilisés comme référence
 ├── data/            # données locales, ignorées par Git sauf exemples légers
-├── src/             # collecte, nettoyage et calculs réutilisables
+├── src/             # collecte, nettoyage, API et calculs réutilisables
+├── static/          # styles et interactions du frontend
+├── templates/       # pages HTML rendues par Flask
 └── outputs/         # graphiques et exports générés
 ```
 
