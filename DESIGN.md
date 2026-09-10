@@ -65,3 +65,17 @@ en page est exprimée par les classes utilitaires directement dans le template.
 - Les points du graphique portent une valeur textuelle au survol et pour les
   technologies d'assistance.
 - La mise en page passe en une colonne sur mobile.
+
+## Sélection géographique
+
+- Une carte Leaflet/OpenStreetMap de France précède le graphique, hauteur 420 px
+  (350 px sur mobile), dans une carte blanche aux coins de 18 px.
+- Repères gris, repère sélectionné rouge avec double contour et nom textuel.
+- La liste alphabétique synchronisée offre une alternative clavier ou sans carte.
+- Le nom, le massif et les coordonnées/altitude approximatives du point de requête
+  restent visibles, ainsi que le caractère non exhaustif du catalogue.
+- Un bouton explicite charge décembre–avril pour la station et la saison choisies.
+  Le changement de station efface immédiatement l'ancienne courbe ; une réponse
+  tardive ne peut pas réafficher les données d'une autre station.
+- États distincts : chargement, aucune donnée, erreur, simulation Méribel,
+  réanalyse locale et import partiel. La sélection est conservée dans l'URL.

@@ -8,7 +8,8 @@ article à partir de données météorologiques accessibles par API.
 
 Un premier prototype local est disponible. Il présente l'évolution de la
 hauteur de neige par saison avec un sélecteur interactif et une API JSON.
-Pour l'instant, les valeurs sont simulées : aucune API externe n'est appelée.
+Les valeurs initiales de Méribel sont simulées ; un import explicite permet de
+charger la réanalyse Open-Meteo pour la station choisie.
 
 Sur macOS, double-cliquer sur `start_meribel_snow.command`, ou lancer :
 
@@ -128,3 +129,49 @@ réutilisation.
 
 Les répertoires `data/`, `outputs/` et `src/` seront complétés progressivement,
 sans créer d'infrastructure avant d'avoir validé la source de données.
+
+## Carte des stations françaises
+
+La carte permet de sélectionner l'une des 46 stations du catalogue initial
+(Alpes, Pyrénées, Jura, Vosges, Massif central, Corse). Une liste alphabétique
+synchronisée reste utilisable si la carte ne charge pas. Cliquez sur une station,
+choisissez une saison terminée, puis **Charger l’enneigement**. Chaque station a
+ses propres données SQLite ; les saisons complètes sont réutilisées sans nouvel
+appel météo. La démonstration demeure réservée à Méribel.
+
+Le catalogue éditorial `src/snow_layers/stations.py` est **non exhaustif** : noms
+référencés par la [liste des stations de sports d’hiver](https://fr.wikipedia.org/wiki/Liste_de_stations_de_sports_d%27hiver),
+positions WGS84 en degrés et altitudes en mètres **approximatives**, préparées le
+10 septembre 2026. Il ne s'agit pas d'un inventaire officiel ou de positions de
+capteurs. Le point représente une localité ou un départ de domaine, pas son sommet.
+La requête météo utilise ce point et cette altitude explicitement.
+
+La période demandée est du 1er décembre au 30 avril ; valeurs en cm, moyennes
+quotidiennes des hauteurs horaires de la réanalyse ERA5-Land Open-Meteo (pas un
+relevé de station). Source, altitude, période et date de collecte sont affichées.
+Les imports incomplets sont signalés et peuvent être redemandés.
+
+La carte utilise [Leaflet 1.9.4](https://leafletjs.com/examples/quick-start/) via
+unpkg et les tuiles OpenStreetMap, avec attribution. Leur affichage requiert Internet.
+Le catalogue et les séries déjà importées restent locaux. Aucun service payant
+ni clé n'est ajouté ; les limites du service public Open-Meteo s'appliquent.
+
+API : `GET /api/stations`, `GET /api/snow-depth?station=tignes` et
+`POST /api/snow-depth/import` avec `{"station":"tignes","season":"2024-2025"}`.
+Import en ligne de commande :
+
+```bash
+PYTHONPATH=src .venv/bin/python -m snow_layers.import_open_meteo --station tignes --season 2024-2025
+```
+
+Pour constituer la base comparative complète, la commande historique découpe
+la période en tranches de dix ans et regroupe quatre stations par requête :
+
+```bash
+PYTHONPATH=src .venv/bin/python -m snow_layers.import_all_history --from-year 1950 --to-year 2025
+```
+
+Elle couvre les saisons 1950-1951 à 2025-2026, conserve les réponses brutes
+dans `data/raw/open_meteo_archive/` et reprend automatiquement les tranches
+déjà téléchargées. La limite publique Open-Meteo peut imposer une attente ou
+un redémarrage ultérieur ; les stations et tranches validées restent acquises.

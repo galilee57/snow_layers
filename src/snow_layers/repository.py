@@ -19,13 +19,17 @@ MERIBEL = {
 }
 
 
-def get_or_create_meribel(session: Session) -> Station:
-    station = session.scalar(select(Station).where(Station.slug == MERIBEL["slug"]))
+def get_or_create_station(session: Session, definition: dict) -> Station:
+    station = session.scalar(select(Station).where(Station.slug == definition["slug"]))
     if station is None:
-        station = Station(**MERIBEL)
+        station = Station(**{key: definition[key] for key in MERIBEL})
         session.add(station)
         session.flush()
     return station
+
+
+def get_or_create_meribel(session: Session) -> Station:
+    return get_or_create_station(session, MERIBEL)
 
 
 def upsert_observations(
@@ -62,9 +66,9 @@ def season_for(day: date) -> str:
     return f"{start_year}-{start_year + 1}"
 
 
-def load_seasons(session: Session) -> dict[str, list[dict[str, str | float]]]:
+def load_seasons(session: Session, station_slug: str = "meribel") -> dict[str, list[dict[str, str | float]]]:
     rows = session.execute(
-        select(SnowObservation).join(Station).where(Station.slug == MERIBEL["slug"]).order_by(SnowObservation.observed_on)
+        select(SnowObservation).join(Station).where(Station.slug == station_slug).order_by(SnowObservation.observed_on)
     ).scalars()
     seasons: dict[str, list[dict[str, str | float]]] = {}
     for observation in rows:

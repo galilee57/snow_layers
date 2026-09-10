@@ -27,11 +27,11 @@ function renderChart(season) {
     if (!values.length) return null;
     return { min: Math.min(...values), max: Math.max(...values), mean: values.reduce((sum, value) => sum + value, 0) / values.length };
   });
-  const max = Math.ceil(Math.max(
+  const max = Math.max(50, Math.ceil(Math.max(
     ...data.map(({ depth_cm }) => depth_cm),
     ...historicalStats.filter(Boolean).map(({ max: value }) => value),
-  ) / 50) * 50;
-  const x = (i) => left + (i / (data.length - 1)) * (width - left - right);
+  ) / 50) * 50);
+  const x = (i) => left + (i / Math.max(1, data.length - 1)) * (width - left - right);
   const y = (value) => top + (1 - value / max) * (height - top - bottom);
   const points = data.map((row, i) => `${x(i).toFixed(1)},${y(row.depth_cm).toFixed(1)}`);
   const line = `M ${points.join(" L ")}`;
@@ -42,8 +42,8 @@ function renderChart(season) {
   const band = `M ${[...upper, ...lower].join(" L ")} Z`;
   const mean = `M ${stats.map((stat, index) => `${x(index).toFixed(1)},${y(stat?.mean ?? 0).toFixed(1)}`).join(" L ")}`;
 
-  chart.querySelector("#historical-band").setAttribute("d", band);
-  chart.querySelector("#historical-mean").setAttribute("d", mean);
+  chart.querySelector("#historical-band").setAttribute("d", historical.length ? band : "");
+  chart.querySelector("#historical-mean").setAttribute("d", historical.length ? mean : "");
   chart.querySelector("#area-path").setAttribute("d", area);
   chart.querySelector("#line-path").setAttribute("d", line);
   chart.querySelector(".grid-lines").innerHTML = [0, .25, .5, .75, 1].map((step) => {
@@ -59,10 +59,14 @@ function renderChart(season) {
   const peak = data.reduce((best, row) => row.depth_cm > best.depth_cm ? row : best);
   document.querySelector("#peak-depth").textContent = peak.depth_cm;
   document.querySelector("#season-title").textContent = `Saison ${season}`;
-  document.querySelector("#season-summary").textContent = `Le maximum de cette courbe de démonstration est atteint le ${formatDate(peak.date)}.`;
+  document.querySelector("#season-summary").textContent = `Le maximum ${payload.is_demo ? "simulé" : "modélisé"} à ${payload.station} est atteint le ${formatDate(peak.date)}.`;
   document.querySelector("#start-depth").textContent = `${data[0].depth_cm} cm`;
   document.querySelector("#peak-date").textContent = formatDate(peak.date);
   document.querySelector("#point-count").textContent = data.length;
+  const [startYear, endYear] = season.split("-").map(Number);
+  const expectedDays = Math.round((Date.UTC(endYear, 3, 30) - Date.UTC(startYear, 11, 1)) / 86400000) + 1;
+  const partial = !payload.is_demo && (data.length !== expectedDays || data[0].date !== `${startYear}-12-01` || data.at(-1).date !== `${endYear}-04-30`);
+  document.querySelector("#source-line").textContent = `${payload.source} · cm · ≈ ${payload.location.elevation_m} m · ${data[0].date} → ${data.at(-1).date}${payload.collected_at ? " · Collecte : " + new Date(payload.collected_at).toLocaleDateString("fr-FR") : ""}${partial ? " · Données partielles" : ""}`;
   bindTooltip();
 }
 
@@ -84,18 +88,129 @@ function bindTooltip() {
   });
 }
 
-async function loadData() {
-  const response = await fetch("/api/snow-depth");
-  if (!response.ok) throw new Error("Impossible de charger les données.");
-  payload = await response.json();
-  const seasons = Object.keys(payload.seasons).sort().reverse();
-  select.innerHTML = seasons.map((season) => `<option value="${season}">Saison ${season}</option>`).join("");
-  select.disabled = false;
-  chart.insertAdjacentHTML("afterbegin", '<defs><linearGradient id="snow-gradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#dd2222" stop-opacity=".24"/><stop offset="100%" stop-color="#dd2222" stop-opacity="0"/></linearGradient></defs>');
-  document.querySelector("#source-line").textContent = payload.source;
-  document.querySelector("#data-status").textContent = payload.is_demo ? "Prototype · données simulées" : "Données Open-Meteo · locales";
-  renderChart(seasons[0]);
+
+const stationSelect = document.querySelector("#station-select");
+const importButton = document.querySelector("#import-button");
+let stations = [], selectedSlug = "meribel", requestVersion = 0;
+let map;
+const markers = new Map();
+
+function clearChart(message) {
+  tooltip.hidden = true;
+  chart.querySelectorAll("path").forEach((path) => path.removeAttribute("d"));
+  chart.querySelectorAll("g").forEach((group) => { group.innerHTML = ""; });
+  ["peak-depth", "start-depth", "peak-date", "point-count", "season-title"].forEach((id) => { document.getElementById(id).textContent = "—"; });
+  document.querySelector("#season-summary").textContent = message;
+  select.replaceChildren(new Option("Aucune saison disponible", ""));
+  select.disabled = true;
 }
 
+async function loadData(preferredSeason) {
+  const version = ++requestVersion;
+  const slug = selectedSlug;
+  clearChart("Chargement des données de la station…");
+  document.querySelector("#data-status").textContent = "Chargement…";
+  document.querySelector("#source-line").textContent = "Chargement…";
+  try {
+    const response = await fetch(`/api/snow-depth?station=${encodeURIComponent(slug)}`);
+    if (!response.ok) throw new Error("Impossible de charger les données de cette station.");
+    const result = await response.json();
+    if (version !== requestVersion) return;
+    payload = result;
+    const seasons = Object.keys(payload.seasons).sort().reverse();
+    document.querySelector("#source-line").textContent = `${payload.source} · ${payload.location.elevation_m} m (altitude de référence approximative)${payload.collected_at ? " · Collecte : " + new Date(payload.collected_at).toLocaleDateString("fr-FR") : ""}`;
+    document.querySelector("#data-status").textContent = payload.is_demo ? "Prototype · données simulées" : seasons.length ? "Réanalyse Open-Meteo · cache local" : "Aucune donnée locale";
+    if (!seasons.length) {
+      clearChart("Choisissez une saison puis cliquez sur « Charger l’enneigement » pour obtenir la réanalyse de cette station.");
+      return;
+    }
+    select.replaceChildren(...seasons.map((season) => new Option(`Saison ${season}`, season)));
+    select.disabled = false;
+    select.value = seasons.includes(preferredSeason) ? preferredSeason : seasons[0];
+    renderChart(select.value);
+  } catch (error) {
+    if (version !== requestVersion) return;
+    clearChart(error.message);
+    document.querySelector("#source-line").textContent = error.message;
+    document.querySelector("#data-status").textContent = "Chargement impossible";
+  }
+}
+
+function pinIcon(selected) {
+  return L.divIcon({ className: "", html: `<div class="station-pin${selected ? " selected" : ""}"></div>`, iconSize: [16, 16], iconAnchor: [8, 8] });
+}
+
+function chooseStation(slug, moveMap = true) {
+  const station = stations.find((item) => item.slug === slug);
+  if (!station) return;
+  selectedSlug = slug;
+  stationSelect.value = slug;
+  document.querySelector("#selected-station").textContent = station.name;
+  document.querySelector("#station-details").textContent = `${station.massif} · ≈ ${station.elevation_m} m · ${station.latitude.toFixed(3)}° N, ${station.longitude.toFixed(3)}° E · point de requête approximatif`;
+  document.querySelector("#request-status").textContent = "Période : du 1er décembre au 30 avril. Hauteur modélisée, pas un relevé de station.";
+  markers.forEach((marker, key) => {
+    marker.setIcon(pinIcon(key === slug));
+    marker.setZIndexOffset(key === slug ? 1000 : 0);
+  });
+  if (map && moveMap) { map.setView([station.latitude, station.longitude], Math.max(map.getZoom(), 8)); markers.get(slug).openTooltip(); }
+  const url = new URL(window.location.href);
+  url.searchParams.set("station", slug);
+  history.replaceState(null, "", url);
+  loadData();
+}
+
+async function initializeStations() {
+  try {
+    const response = await fetch("/api/stations");
+    if (!response.ok) throw new Error("Le catalogue des stations est indisponible. Rechargez la page.");
+    const catalog = await response.json();
+    stations = catalog.stations;
+    stationSelect.replaceChildren(...[...stations].sort((a, b) => a.name.localeCompare(b.name, "fr")).map((station) => new Option(`${station.name} · ${station.massif}`, station.slug)));
+    stationSelect.disabled = false;
+    importButton.disabled = false;
+    document.querySelector("#map-status").textContent = `${stations.length} stations · ${catalog.note}. Cliquez sur un repère ou utilisez la liste.`;
+    if (window.L) {
+      map = L.map("station-map", { scrollWheelZoom: false }).fitBounds([[41.3, -5.2], [51.1, 9.7]]);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 16, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).on("tileerror", () => { document.querySelector("#map-status").textContent = "Fond de carte indisponible. La liste des stations reste utilisable. " + catalog.note; }).addTo(map);
+      stations.forEach((station) => {
+        const label = document.createElement("span"); label.textContent = station.name;
+        const marker = L.marker([station.latitude, station.longitude], {icon: pinIcon(false), title: station.name, alt: station.name, keyboard: true}).addTo(map).bindTooltip(label);
+        marker.on("click", () => chooseStation(station.slug));
+        markers.set(station.slug, marker);
+      });
+    } else {
+      document.querySelector("#station-map").hidden = true;
+      document.querySelector("#map-status").textContent = "Carte indisponible hors connexion : utilisez la liste. " + catalog.note;
+    }
+    const requested = new URLSearchParams(location.search).get("station");
+    chooseStation(stations.some((station) => station.slug === requested) ? requested : "meribel", false);
+  } catch (error) {
+    document.querySelector("#map-status").textContent = error.message;
+    clearChart(error.message);
+    document.querySelector("#data-status").textContent = "Catalogue indisponible";
+  }
+}
+
+chart.insertAdjacentHTML("afterbegin", '<defs><linearGradient id="snow-gradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#dd2222" stop-opacity=".24"/><stop offset="100%" stop-color="#dd2222" stop-opacity="0"/></linearGradient></defs>');
+stationSelect.addEventListener("change", () => chooseStation(stationSelect.value));
 select.addEventListener("change", () => renderChart(select.value));
-loadData().catch((error) => { document.querySelector("#source-line").textContent = error.message; });
+document.querySelector("#import-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const slug = selectedSlug, season = document.querySelector("#import-season").value;
+  importButton.disabled = true;
+  document.querySelector("#request-status").textContent = "Chargement Open-Meteo en cours…";
+  try {
+    const response = await fetch("/api/snow-depth/import", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({station: slug, season}) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "La requête a échoué.");
+    if (selectedSlug === slug) {
+      await loadData(season);
+      document.querySelector("#request-status").textContent = `${result.count} jours · ${result.cached ? "lus dans le cache local" : "chargés et conservés localement"}${result.partial ? " · Données partielles" : ""}.`;
+    }
+  } catch (error) {
+    if (selectedSlug === slug) document.querySelector("#request-status").textContent = error.message;
+  } finally { importButton.disabled = false; }
+});
+initializeStations();

@@ -26,6 +26,7 @@ def fetch_daily_snow_depth(
         "longitude": longitude,
         "elevation": elevation_m,
         "hourly": "snow_depth",
+        "models": "era5_land",
         "timezone": "Europe/Paris",
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
