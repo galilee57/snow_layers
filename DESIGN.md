@@ -92,3 +92,22 @@ en page est exprimée par les classes utilitaires directement dans le template.
 - Deux stations sont choisies indépendamment dans des listes synchronisées.
   Les statistiques min, max et moy de chaque catégorie ainsi que les deux
   courbes de station sont masquables individuellement.
+
+## Disposition carte et saison
+
+- La carte et les informations de station occupent deux compartiments blancs,
+  alignés sur les colonnes du graphique : `minmax(0, 2fr) minmax(280px, .8fr)`,
+  avec un espacement de 18 px. La carte bénéficie de la colonne principale.
+- La liste des stations, le nom et les informations géographiques sont à droite.
+- Le sélecteur de saison affichée remplace le titre de saison dans le panneau
+  noir. Le sélecteur unique inclut les saisons locales et les saisons à charger.
+  Le bouton de chargement et son statut restent sous les informations de station ;
+  ils concernent uniquement la station et la saison sélectionnées.
+- Les sélecteurs sur fond noir utilisent une surface sombre, un texte blanc et
+  un contour visible. Les deux rangées passent en une colonne à 720 px.
+
+- La comparaison reprend la même grille à deux colonnes : graphique à gauche,
+  réglages dans un compartiment blanc dédié à droite. Les deux sélecteurs et
+  les boutons de visibilité des stations forment un premier groupe ; les
+  statistiques occupent un second groupe séparé, avec un encadré par altitude.
+  Le SVG s'adapte à la largeur disponible sans imposer de défilement horizontal.

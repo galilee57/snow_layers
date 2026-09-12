@@ -69,4 +69,4 @@ for station in STATIONS:
     station["altitude_category"] = altitude_category(station["elevation_m"])
 
 STATIONS_BY_SLUG = {station['slug']: station for station in STATIONS}
-CATALOG_NOTE = 'Catalogue initial non exhaustif · altitudes : basse < 1 200 m, moyenne 1 200–1 800 m, haute > 1 800 m · positions approximatives · préparé le 10/09/2026'
+CATALOG_NOTE = 'Altitudes : basse < 1 200 m, moyenne 1 200–1 800 m, haute > 1 800 m · positions approximatives'

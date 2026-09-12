@@ -50,7 +50,7 @@ function renderChart(season) {
     const value = Math.round(max * step), lineY = y(value);
     return `<line class="grid-line" x1="${left}" y1="${lineY}" x2="${width - right}" y2="${lineY}" /><text class="axis-label" x="0" y="${lineY + 4}">${value}</text>`;
   }).join("");
-  chart.querySelector("#points").innerHTML = data.map((row, index) => `<circle class="data-point" cx="${x(index)}" cy="${y(row.depth_cm)}" r="4" tabindex="0" data-date="${formatDate(row.date)}" data-depth="${row.depth_cm}"><title>${formatDate(row.date)} : ${row.depth_cm} cm</title></circle>`).join("");
+  chart.querySelector("#points").innerHTML = data.map((row, index) => `<circle class="data-point" cx="${x(index)}" cy="${y(row.depth_cm)}" r="3" tabindex="0" data-date="${formatDate(row.date)}" data-depth="${row.depth_cm}"><title>${formatDate(row.date)} : ${row.depth_cm} cm</title></circle>`).join("");
   chart.querySelector("#axis-labels").innerHTML = getAxisLabelIndexes(data.length).map((index) => {
     const row = data[index];
     return `<text class="axis-label" text-anchor="middle" x="${x(index)}" y="${height - 10}">${formatDate(row.date)}</text>`;
@@ -95,14 +95,16 @@ let stations = [], selectedSlug = "meribel", requestVersion = 0;
 let map;
 const markers = new Map();
 
-function clearChart(message) {
+function clearChart(message, resetSelect = true) {
   tooltip.hidden = true;
   chart.querySelectorAll("path").forEach((path) => path.removeAttribute("d"));
   chart.querySelectorAll("g").forEach((group) => { group.innerHTML = ""; });
   ["peak-depth", "start-depth", "peak-date", "point-count", "season-title"].forEach((id) => { document.getElementById(id).textContent = "—"; });
   document.querySelector("#season-summary").textContent = message;
-  select.replaceChildren(new Option("Aucune saison disponible", ""));
-  select.disabled = true;
+  if (resetSelect) {
+    select.replaceChildren(new Option("Aucune saison disponible", ""));
+    select.disabled = true;
+  }
 }
 
 async function loadData(preferredSeason) {
@@ -120,19 +122,24 @@ async function loadData(preferredSeason) {
     const seasons = Object.keys(payload.seasons).sort().reverse();
     document.querySelector("#source-line").textContent = `${payload.source} · ${payload.location.elevation_m} m (altitude de référence approximative)${payload.collected_at ? " · Collecte : " + new Date(payload.collected_at).toLocaleDateString("fr-FR") : ""}`;
     document.querySelector("#data-status").textContent = payload.is_demo ? "Prototype · données simulées" : seasons.length ? "Réanalyse Open-Meteo · cache local" : "Aucune donnée locale";
-    if (!seasons.length) {
-      clearChart("Choisissez une saison puis cliquez sur « Charger l’enneigement » pour obtenir la réanalyse de cette station.");
-      return;
-    }
-    select.replaceChildren(...seasons.map((season) => new Option(`Saison ${season}`, season)));
+    const choices = [...new Set([...seasons, ...JSON.parse(select.dataset.importSeasons)])].sort().reverse();
+    select.replaceChildren(...choices.map((season) => new Option(`Saison ${season}${seasons.includes(season) ? "" : " · à charger"}`, season)));
     select.disabled = false;
-    select.value = seasons.includes(preferredSeason) ? preferredSeason : seasons[0];
-    renderChart(select.value);
+    select.value = choices.includes(preferredSeason) ? preferredSeason : (seasons[0] || choices[0]);
+    showSelectedSeason();
   } catch (error) {
     if (version !== requestVersion) return;
     clearChart(error.message);
     document.querySelector("#source-line").textContent = error.message;
     document.querySelector("#data-status").textContent = "Chargement impossible";
+  }
+}
+
+function showSelectedSeason() {
+  if (payload?.seasons?.[select.value]?.length) {
+    renderChart(select.value);
+  } else {
+    clearChart("Cette saison n’est pas disponible localement. Chargez-la avec le bouton sous les informations de station (réanalyse Open-Meteo).", false);
   }
 }
 
@@ -146,8 +153,7 @@ function chooseStation(slug, moveMap = true) {
   selectedSlug = slug;
   stationSelect.value = slug;
   document.querySelector("#selected-station").textContent = station.name;
-  document.querySelector("#station-details").textContent = `${station.massif} · ≈ ${station.elevation_m} m · ${station.latitude.toFixed(3)}° N, ${station.longitude.toFixed(3)}° E · point de requête approximatif`;
-  document.querySelector("#request-status").textContent = "Période : du 1er décembre au 30 avril. Hauteur modélisée, pas un relevé de station.";
+  document.querySelector("#station-details").textContent = `${station.massif} · ≈ ${station.elevation_m} m · ${station.latitude.toFixed(3)}° N, ${station.longitude.toFixed(3)}° E (approximatif)`;
   markers.forEach((marker, key) => {
     marker.setIcon(pinIcon(key === slug, markers.get(key).stationCategory));
     marker.setZIndexOffset(key === slug ? 1000 : 0);
@@ -168,7 +174,7 @@ async function initializeStations() {
     stationSelect.replaceChildren(...[...stations].sort((a, b) => a.name.localeCompare(b.name, "fr")).map((station) => new Option(`${station.name} · ${station.massif}`, station.slug)));
     stationSelect.disabled = false;
     importButton.disabled = false;
-    document.querySelector("#map-status").textContent = `${stations.length} stations · ${catalog.note}. Cliquez sur un repère ou utilisez la liste.`;
+    document.querySelector("#map-status").textContent = `${stations.length} stations · ${catalog.note}.`;
     if (window.L) {
       map = L.map("station-map", { scrollWheelZoom: false }).fitBounds([[41.3, -5.2], [51.1, 9.7]]);
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -197,10 +203,11 @@ async function initializeStations() {
 
 chart.insertAdjacentHTML("afterbegin", '<defs><linearGradient id="snow-gradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#dd2222" stop-opacity=".24"/><stop offset="100%" stop-color="#dd2222" stop-opacity="0"/></linearGradient></defs>');
 stationSelect.addEventListener("change", () => chooseStation(stationSelect.value));
-select.addEventListener("change", () => renderChart(select.value));
+select.addEventListener("change", showSelectedSeason);
 document.querySelector("#import-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const slug = selectedSlug, season = document.querySelector("#import-season").value;
+  const slug = selectedSlug, season = select.value;
+  if (select.disabled || !season) return;
   importButton.disabled = true;
   document.querySelector("#request-status").textContent = "Chargement Open-Meteo en cours…";
   try {

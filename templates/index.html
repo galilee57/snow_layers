@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Prototype de suivi de l'enneigement à Méribel.">
-    <title>Méribel · Enneigement</title>
+    <meta name="description" content="Prototype de suivi de l'enneigement depuis 1950">
+    <title>Evolution · Enneigement</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   </head>
@@ -13,48 +13,42 @@
       <header class="flex items-center justify-between max-[720px]:items-start max-[720px]:gap-2.5">
         <a class="flex items-center gap-2.5 text-[1.03rem] tracking-[-.03em] text-ink no-underline" href="/" aria-label="Accueil Méribel Snow Layers">
           <span class="grid size-[30px] place-items-center rounded-full bg-red font-serif font-bold text-white">M</span>
-          <span>Méribel <strong>neige</strong></span>
+          <span>France <strong>neige</strong></span>
         </a>
         <span class="rounded-full border border-line px-2.5 py-[7px] text-xs text-muted max-[720px]:text-right" id="data-status">Chargement des données…</span>
       </header>
 
-      <section class="max-w-[780px] py-[88px] pb-[54px] max-[720px]:py-[58px] max-[720px]:pb-[38px]" aria-labelledby="page-title">
+      <section class="max-w-[700px] py-[88px] pb-[54px] max-[720px]:py-[58px] max-[720px]:pb-[38px]" aria-labelledby="page-title">
         <p class="mb-2.5 text-xs font-bold uppercase tracking-[.11em] text-red">Les hivers des massifs français</p>
-        <h1 class="mb-6 text-[clamp(2.65rem,6vw,5.8rem)] leading-[.93] tracking-[-.075em]" id="page-title">Observer l'hiver,<br><em class="font-serif font-normal tracking-[-.06em] text-red">comprendre les saisons.</em></h1>
-        <p class="max-w-[580px] text-[1.1rem] leading-[1.6] text-muted">Sélectionnez une station sur la carte pour explorer son enneigement au fil des saisons.</p>
+        <h1 class="mb-6 text-[clamp(2.65rem,6vw,5.8rem)] leading-[.93] tracking-[-.075em]" id="page-title">SNOW LAYERS<br><em class="font-serif font-normal tracking-[-.06em] text-red">Evolution de l'enneigement</em></h1>
       </section>
 
-      <section class="station-panel" aria-labelledby="station-heading">
-        <div class="station-controls">
-          <div><p class="station-eyebrow">Choisir votre destination</p><h2 id="station-heading">Une station, ses saisons.</h2></div>
-          <label for="station-select">Station de ski<select id="station-select" disabled><option>Chargement…</option></select></label>
+      <section class="snow-layout station-layout" aria-labelledby="station-heading">
+        <div class="station-panel">
+          <h2 id="station-heading" class="station-eyebrow">Choisir la station à étudier</h2>
+          <div id="station-map" aria-label="Carte des stations de ski françaises"></div>
+          <p id="map-status" class="station-note" role="status">Chargement de la carte…</p>
         </div>
-        <div id="station-map" aria-label="Carte des stations de ski françaises"></div>
-        <div class="map-legend" aria-label="Catégories d’altitude"><span><i class="map-legend-dot low"></i>Basse montagne</span><span><i class="map-legend-dot mid"></i>Moyenne montagne</span><span><i class="map-legend-dot high"></i>Haute montagne</span></div>
-        <p id="map-status" class="station-note" role="status">Chargement de la carte…</p>
-        <div class="station-request">
-          <div><h3 id="selected-station">Méribel</h3><p id="station-details" class="station-note"></p></div>
+        <aside class="station-panel station-info" aria-label="Informations de la station">
+          <label for="station-select" class="station-eyebrow">Station à étudier</label>
+          <select id="station-select" disabled><option>Chargement…</option></select>
+          <h3 id="selected-station">Station</h3>
+          <p id="station-details" class="station-note"></p>
           <form id="import-form">
-            <label for="import-season">Saison à demander<select id="import-season">{% for season in import_seasons %}<option value="{{ season }}">{{ season }}</option>{% endfor %}</select></label>
-            <button id="import-button" type="submit" disabled>Charger l’enneigement</button>
+            <button id="import-button" type="submit" disabled>Charger la saison sélectionnée</button>
           </form>
-        </div>
-        <p id="request-status" class="station-note" role="status" aria-live="polite">Les données déjà chargées sont conservées localement.</p>
+          <p id="request-status" class="station-note" role="status" aria-live="polite">Charge la saison choisie dans le panneau noir pour cette station. Les données sont conservées localement.</p>
+        </aside>
       </section>
 
-      <section class="grid grid-cols-[minmax(0,2fr)_minmax(280px,.8fr)] gap-[18px] max-[720px]:grid-cols-1" aria-label="Suivi de l'enneigement">
+      <section class="snow-layout" aria-label="Suivi de l'enneigement">
         <div class="rounded-[18px] border border-line bg-paper p-[30px] max-[720px]:p-[22px]">
           <div class="flex items-start justify-between gap-[18px] max-[720px]:flex-col">
             <div>
               <p class="mb-2.5 text-xs font-bold uppercase tracking-[.11em] text-red">Hauteur de neige</p>
               <h2 class="mb-0 text-[2rem] tracking-[-.06em]"><span id="peak-depth">—</span> <small class="text-[.82rem] font-medium tracking-[-.02em] text-muted">cm au maximum</small></h2>
             </div>
-            <label for="season-select">
-              <span class="sr-only">Saison affichée</span>
-              <select class="cursor-pointer appearance-none rounded-lg border border-line bg-white px-3 py-2.5 pr-[34px] text-[.86rem] text-ink" id="season-select" disabled>
-                <option>Chargement…</option>
-              </select>
-            </label>
+
           </div>
           <div class="relative mt-[34px] overflow-hidden"><svg class="block min-h-[250px] w-full overflow-visible" id="snow-chart" viewBox="0 0 800 330" role="img" aria-labelledby="chart-title chart-desc">
               <title id="chart-title">Évolution de la hauteur de neige</title>
@@ -78,8 +72,15 @@
 
         <aside class="flex flex-col rounded-[18px] bg-ink p-[30px] text-white max-[720px]:p-[22px]" aria-label="Lecture du prototype">
           <p class="mb-2.5 text-xs font-bold uppercase tracking-[.11em] text-[#ff7878]">À retenir</p>
-          <h2 class="mb-3.5 text-[1.65rem] tracking-[-.05em]" id="season-title">—</h2>
+            <label for="season-select">
+              <span class="sr-only">Saison affichée</span>
+              <select class="season-control" id="season-select" data-import-seasons='{{ import_seasons | tojson }}' disabled>
+                <option>Chargement…</option>
+              </select>
+            </label>
+          <h2 class="sr-only" id="season-title">—</h2>
           <p class="leading-[1.6] text-[#c8c8c8]" id="season-summary">Chargement de la courbe saisonnière…</p>
+
           <dl class="mt-auto">
             <div class="flex justify-between gap-2.5 border-t border-[#444] py-3.5"><dt class="text-xs text-[#b7b7b7]">Début de saison</dt><dd class="font-bold" id="start-depth">—</dd></div>
             <div class="flex justify-between gap-2.5 border-t border-[#444] py-3.5"><dt class="text-xs text-[#b7b7b7]">Pic estimé</dt><dd class="font-bold" id="peak-date">—</dd></div>
@@ -88,33 +89,41 @@
         </aside>
       </section>
 
-      <section class="comparison-panel" aria-labelledby="comparison-heading">
-        <div class="comparison-header">
-          <div>
-            <p class="station-eyebrow">Comparer les altitudes</p>
-            <h2 id="comparison-heading">Deux stations, une même histoire.</h2>
-            <p class="station-note">Chaque point est la moyenne de décembre à avril. Les lignes pâles donnent le min/max/moyen des stations de la catégorie.</p>
-          </div>
-          <div class="comparison-stations">
-            <label for="compare-a">Station 1<select id="compare-a"></select></label>
-            <label for="compare-b">Station 2<select id="compare-b"></select></label>
-          </div>
-        </div>
-        <div class="comparison-toggles" aria-label="Afficher ou masquer les statistiques">
-          <span class="toggle-label">Statistiques de catégorie</span>
-          {% for category, label in [('basse', 'Basse montagne'), ('moyenne', 'Moyenne montagne'), ('haute', 'Haute montagne')] %}
-            <span class="toggle-group"><strong>{{ label }}</strong><button type="button" class="stat-toggle is-on category-{{ category }}" data-stat="{{ category }}-min">min</button><button type="button" class="stat-toggle is-on category-{{ category }}" data-stat="{{ category }}-max">max</button><button type="button" class="stat-toggle is-on category-{{ category }}" data-stat="{{ category }}-mean">moy</button></span>
-          {% endfor %}
-          <span class="toggle-group station-toggles"><strong>Stations</strong><button type="button" class="stat-toggle is-on station-a-toggle" data-stat="station-a">station 1</button><button type="button" class="stat-toggle is-on station-b-toggle" data-stat="station-b">station 2</button></span>
-        </div>
+      <section class="snow-layout comparison-layout" aria-labelledby="comparison-heading">
+        <div class="comparison-panel">
+          <h2 id="comparison-heading" class="station-eyebrow">Comparer les altitudes</h2>
         <div class="comparison-chart-wrap"><svg id="comparison-chart" viewBox="0 0 1000 430" role="img" aria-labelledby="comparison-chart-title comparison-chart-desc"><title id="comparison-chart-title">Comparaison des hauteurs de neige par saison</title><desc id="comparison-chart-desc">Moyenne hivernale de deux stations avec les statistiques des catégories d'altitude.</desc><g id="comparison-grid"></g><g id="comparison-series"></g><g id="comparison-axis"></g></svg></div>
         <p id="comparison-status" class="station-note" role="status">Chargement de la comparaison…</p>
+        </div>
+        <aside class="comparison-panel comparison-settings" aria-label="Réglages de la comparaison">
+          <div class="comparison-stations">
+            <p class="station-eyebrow">Stations à comparer</p>
+            <label for="compare-a">Station 1<select id="compare-a"></select></label>
+            <label for="compare-b">Station 2<select id="compare-b"></select></label>
+            <div class="station-toggles" aria-label="Afficher ou masquer les stations">
+              <button type="button" class="stat-toggle is-on station-a-toggle" data-stat="station-a">station 1</button>
+              <button type="button" class="stat-toggle is-on station-b-toggle" data-stat="station-b">station 2</button>
+            </div>
+          </div>
+          <div class="comparison-toggles" aria-label="Afficher ou masquer les statistiques">
+            <p class="toggle-label">Statistiques de catégorie</p>
+            {% for category, label in [('basse', 'Basse montagne'), ('moyenne', 'Moyenne montagne'), ('haute', 'Haute montagne')] %}
+              <fieldset class="toggle-group">
+                <legend>{{ label }}</legend>
+                <div class="stat-buttons">
+                  <button type="button" class="stat-toggle is-on category-{{ category }}" data-stat="{{ category }}-min">min</button>
+                  <button type="button" class="stat-toggle is-on category-{{ category }}" data-stat="{{ category }}-max">max</button>
+                  <button type="button" class="stat-toggle is-on category-{{ category }}" data-stat="{{ category }}-mean">moy</button>
+                </div>
+              </fieldset>
+            {% endfor %}
+          </div>
+        </aside>
       </section>
 
       <section class="mt-[42px] max-w-[720px] border-l-[3px] border-red pl-[18px]">
         <p class="mb-2.5 text-xs font-bold uppercase tracking-[.11em] text-red">À propos</p>
-        <p class="mb-3.5 text-[1.1rem] leading-[1.6] text-muted">Ce prototype est une première lecture de l'épaisseur de neige à Méribel, à partir des données publiques de Météo France et de l'ANENA.</p>
-        <p class="text-[1.1rem] leading-[1.6] text-muted">Il est développé par <a class="font-medium text-red no-underline" href="https://twitter.com/guillaumebort" target="_blank" rel="noopener noreferrer">Guillaume Bort</a> et <a class="font-medium text-red no-underline" href="https://twitter.com/charlesbort" target="_blank" rel="noopener noreferrer">Charles Bort</a>, avec le soutien de la <a class="font-medium text-red no-underline" href="https://www.meribel.net/" target="_blank" rel="noopener noreferrer">Mairie de Méribel</a>.</p>
+        <p class="mb-3.5 text-[1.1rem] leading-[1.6] text-muted">Ce prototype est développé, à partir des données Open-Meteo.</p>
       </section>
     </main>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

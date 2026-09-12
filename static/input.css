@@ -33,14 +33,18 @@
 }
 
 @layer components {
-  .station-panel { margin-bottom: 24px; padding: 26px; border: 1px solid var(--color-line); border-radius: 18px; background: white; }
+  .snow-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, .8fr); gap: 18px; }
+  .station-layout { margin-bottom: 24px; }
+  .station-info { display: flex; flex-direction: column; align-items: stretch; }
+  .station-info h3 { margin-top: 26px; }
+  .station-panel { min-width: 0; padding: 26px; border: 1px solid var(--color-line); border-radius: 18px; background: white; }
   .station-controls, .station-request { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-  .station-panel h2 { font-size: 1.65rem; letter-spacing: -.05em; margin-bottom: 18px; }
+  .station-panel h2 { font-size: .75rem; letter-spacing: .11em; margin-bottom: 18px; }
   .station-panel h3 { font-size: 1.3rem; margin: 0 0 6px; }
   .station-eyebrow { font-size: .75rem; text-transform: uppercase; letter-spacing: .11em; color: var(--color-red); font-weight: 700; margin-bottom: 8px; }
   .station-panel label { display: grid; gap: 6px; font-size: .8rem; }
   .station-panel select { border: 1px solid var(--color-line); border-radius: 8px; background: white; padding: 10px; max-width: 100%; color: var(--color-ink); }
-  #station-select { width: 285px; }
+  #station-select { width: 100%; }
   #station-map { height: 420px; border-radius: 12px; background: #edf0ed; z-index: 0; }
   .map-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; color: var(--color-muted); font-size: .75rem; }
   .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -49,7 +53,12 @@
   .map-legend-dot.mid { background: #d28a31; }
   .map-legend-dot.high { background: #6b59a5; }
   .station-note { color: var(--color-muted); font-size: .8rem; line-height: 1.6; margin: 12px 0; }
-  #import-form { display: flex; align-items: end; gap: 12px; }
+  #import-form { display: grid; gap: 12px; margin-top: 24px; }
+  #import-form label { display: grid; gap: 8px; font-size: .8rem; color: #c8c8c8; }
+  .season-control { width: 100%; min-width: 0; border: 1px solid #555; border-radius: 8px; padding: 10px; background: #292929; color: white; color-scheme: dark; cursor: pointer; }
+  .season-control { margin-bottom: 18px; font-size: 1.35rem; letter-spacing: -.04em; }
+  #request-status { color: var(--color-muted); }
+  #import-form :focus-visible, .season-control:focus-visible { outline: 3px solid #ff7878; outline-offset: 3px; }
   #import-button { background: var(--color-red); color: white; padding: 11px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
   #import-button:disabled { opacity: .5; cursor: wait; }
   .station-pin { width: 16px; height: 16px; border: 2px solid white; border-radius: 50%; background: #696969; box-shadow: 0 1px 4px #0005; }
@@ -58,23 +67,26 @@
   .station-pin.category-high { background: #6b59a5; }
   .station-pin.selected { background: #dd2222; border: 3px solid white; outline: 3px solid #dd2222; }
   .station-panel :focus-visible { outline: 3px solid #dd2222; outline-offset: 3px; }
-  .comparison-panel { margin-top: 42px; padding: 30px; border: 1px solid var(--color-line); border-radius: 18px; background: white; }
+  .comparison-layout { margin-top: 42px; }
+  .comparison-panel { min-width: 0; padding: 30px; border: 1px solid var(--color-line); border-radius: 18px; background: white; }
   .comparison-header { display: flex; justify-content: space-between; align-items: end; gap: 24px; }
-  .comparison-panel h2 { margin: 0 0 8px; font-size: 2rem; letter-spacing: -.06em; }
-  .comparison-stations { display: flex; gap: 12px; }
-  .comparison-stations label { display: grid; gap: 6px; min-width: 190px; font-size: .8rem; }
-  .comparison-stations select { border: 1px solid var(--color-line); border-radius: 8px; background: white; padding: 10px; color: var(--color-ink); }
-  .comparison-toggles { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 22px 0 10px; font-size: .75rem; }
-  .toggle-label { color: var(--color-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
-  .toggle-group { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px; border: 1px solid var(--color-line); border-radius: 8px; }
-  .toggle-group strong { margin: 0 4px 0 2px; font-size: .72rem; }
+  .comparison-panel h2 { margin: 0 0 24px; font-size: .75rem; letter-spacing: .11em; }
+  .comparison-stations { display: grid; gap: 12px; }
+  .comparison-stations label { display: grid; gap: 6px; min-width: 0; font-size: .8rem; }
+  .comparison-stations select { width: 100%; min-width: 0; border: 1px solid var(--color-line); border-radius: 8px; background: white; padding: 10px; color: var(--color-ink); }
+  .comparison-toggles { display: grid; gap: 14px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--color-line); font-size: .75rem; }
+  .toggle-label { margin: 0; color: var(--color-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .toggle-group { min-width: 0; margin: 0; padding: 10px; border: 1px solid var(--color-line); border-radius: 8px; }
+  .toggle-group legend { padding: 0 4px; font-weight: 600; }
+  .stat-buttons, .station-toggles { display: flex; gap: 6px; }
+  .stat-buttons .stat-toggle, .station-toggles .stat-toggle { flex: 1; }
   .stat-toggle { border: 0; border-radius: 5px; padding: 5px 7px; background: #efefec; color: var(--color-muted); cursor: pointer; }
   .stat-toggle.is-on { background: var(--color-ink); color: white; }
   .category-basse .stat-toggle.is-on { background: #3d7d65; }
   .category-moyenne .stat-toggle.is-on { background: #d28a31; }
   .category-haute .stat-toggle.is-on { background: #6b59a5; }
   .comparison-chart-wrap { overflow-x: auto; }
-  #comparison-chart { display: block; min-width: 760px; width: 100%; min-height: 310px; overflow: visible; }
+  #comparison-chart { display: block; min-width: 0; width: 100%; height: auto; overflow: visible; }
   .comparison-grid-line { stroke: var(--color-line); stroke-width: 1; stroke-dasharray: 3 5; }
   .comparison-axis-label { fill: var(--color-muted); font-size: 12px; }
   .comparison-low, .comparison-mid, .comparison-high { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -87,6 +99,7 @@
   .comparison-station.station-a { stroke: var(--color-red); }
   .comparison-station.station-b { stroke: var(--color-ink); stroke-dasharray: 8 5; }
   @media (max-width: 720px) {
+    .snow-layout { grid-template-columns: minmax(0, 1fr); }
     .station-panel { padding: 18px; }
     .station-controls, .station-request { align-items: stretch; flex-direction: column; gap: 8px; }
     #station-select { width: 100%; }
