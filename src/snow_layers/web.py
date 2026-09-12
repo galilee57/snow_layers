@@ -16,6 +16,37 @@ from snow_layers.repository import get_or_create_station, load_seasons, upsert_o
 from snow_layers.stations import STATIONS, STATIONS_BY_SLUG, CATALOG_NOTE
 
 
+def _comparison_payload(session, selected_slugs: list[str]) -> dict:
+    """Construit les moyennes saisonnières station et catégorie en centimètres."""
+    by_station = {station["slug"]: load_seasons(session, station["slug"]) for station in STATIONS}
+    all_seasons = sorted({season for seasons in by_station.values() for season in seasons}, reverse=False)
+    station_means = {}
+    for station in STATIONS:
+        station_means[station["slug"]] = {
+            season: round(sum(row["depth_cm"] for row in rows) / len(rows), 1)
+            for season, rows in by_station[station["slug"]].items() if rows
+        }
+    categories = {}
+    for category in ("basse", "moyenne", "haute"):
+        members = [station["slug"] for station in STATIONS if station["altitude_category"] == category]
+        categories[category] = {}
+        for season in all_seasons:
+            values = [station_means[slug][season] for slug in members if season in station_means[slug]]
+            if values:
+                categories[category][season] = {
+                    "min": round(min(values), 1), "max": round(max(values), 1),
+                    "mean": round(sum(values) / len(values), 1), "count": len(values),
+                }
+    return {
+        "unit": "cm", "seasons": all_seasons,
+        "stations": {
+            slug: {"name": STATIONS_BY_SLUG[slug]["name"], "category": STATIONS_BY_SLUG[slug]["altitude_category"], "values": station_means[slug]}
+            for slug in selected_slugs
+        },
+        "categories": categories,
+    }
+
+
 def create_app(database_url: str | None = None) -> Flask:
     app = Flask(__name__, template_folder='../../templates', static_folder='../../static')
     app.config['SESSION_FACTORY'] = create_session_factory(database_url)
@@ -45,6 +76,17 @@ def create_app(database_url: str | None = None) -> Flask:
                        source=SOURCE_NAME if seasons else ('Données de démonstration · simulées' if is_demo else 'Aucune donnée locale pour cette station.'),
                        collected_at=latest.isoformat() if latest else None,
                        seasons=seasons or (DEMO_SEASONS if is_demo else {}))
+
+    @app.get('/api/comparison')
+    def comparison():
+        requested = request.args.getlist('station')
+        if len(requested) == 1 and ',' in requested[0]:
+            requested = requested[0].split(',')
+        selected = [slug for slug in dict.fromkeys(requested) if slug in STATIONS_BY_SLUG]
+        if len(selected) != 2:
+            return jsonify(error='Sélectionnez exactement deux stations.'), 400
+        with app.config['SESSION_FACTORY']() as session:
+            return jsonify(_comparison_payload(session, selected))
 
     @app.post('/api/snow-depth/import')
     def import_depth():

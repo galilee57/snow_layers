@@ -42,18 +42,59 @@
   .station-panel select { border: 1px solid var(--color-line); border-radius: 8px; background: white; padding: 10px; max-width: 100%; color: var(--color-ink); }
   #station-select { width: 285px; }
   #station-map { height: 420px; border-radius: 12px; background: #edf0ed; z-index: 0; }
+  .map-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; color: var(--color-muted); font-size: .75rem; }
+  .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .map-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .map-legend-dot.low { background: #3d7d65; }
+  .map-legend-dot.mid { background: #d28a31; }
+  .map-legend-dot.high { background: #6b59a5; }
   .station-note { color: var(--color-muted); font-size: .8rem; line-height: 1.6; margin: 12px 0; }
   #import-form { display: flex; align-items: end; gap: 12px; }
   #import-button { background: var(--color-red); color: white; padding: 11px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
   #import-button:disabled { opacity: .5; cursor: wait; }
   .station-pin { width: 16px; height: 16px; border: 2px solid white; border-radius: 50%; background: #696969; box-shadow: 0 1px 4px #0005; }
+  .station-pin.category-low { background: #3d7d65; }
+  .station-pin.category-mid { background: #d28a31; }
+  .station-pin.category-high { background: #6b59a5; }
   .station-pin.selected { background: #dd2222; border: 3px solid white; outline: 3px solid #dd2222; }
   .station-panel :focus-visible { outline: 3px solid #dd2222; outline-offset: 3px; }
+  .comparison-panel { margin-top: 42px; padding: 30px; border: 1px solid var(--color-line); border-radius: 18px; background: white; }
+  .comparison-header { display: flex; justify-content: space-between; align-items: end; gap: 24px; }
+  .comparison-panel h2 { margin: 0 0 8px; font-size: 2rem; letter-spacing: -.06em; }
+  .comparison-stations { display: flex; gap: 12px; }
+  .comparison-stations label { display: grid; gap: 6px; min-width: 190px; font-size: .8rem; }
+  .comparison-stations select { border: 1px solid var(--color-line); border-radius: 8px; background: white; padding: 10px; color: var(--color-ink); }
+  .comparison-toggles { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 22px 0 10px; font-size: .75rem; }
+  .toggle-label { color: var(--color-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .toggle-group { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px; border: 1px solid var(--color-line); border-radius: 8px; }
+  .toggle-group strong { margin: 0 4px 0 2px; font-size: .72rem; }
+  .stat-toggle { border: 0; border-radius: 5px; padding: 5px 7px; background: #efefec; color: var(--color-muted); cursor: pointer; }
+  .stat-toggle.is-on { background: var(--color-ink); color: white; }
+  .category-basse .stat-toggle.is-on { background: #3d7d65; }
+  .category-moyenne .stat-toggle.is-on { background: #d28a31; }
+  .category-haute .stat-toggle.is-on { background: #6b59a5; }
+  .comparison-chart-wrap { overflow-x: auto; }
+  #comparison-chart { display: block; min-width: 760px; width: 100%; min-height: 310px; overflow: visible; }
+  .comparison-grid-line { stroke: var(--color-line); stroke-width: 1; stroke-dasharray: 3 5; }
+  .comparison-axis-label { fill: var(--color-muted); font-size: 12px; }
+  .comparison-low, .comparison-mid, .comparison-high { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .comparison-low { stroke: #3d7d65; }
+  .comparison-mid { stroke: #d28a31; }
+  .comparison-high { stroke: #6b59a5; }
+  .comparison-min, .comparison-max { stroke-dasharray: 2 4; opacity: .55; }
+  .comparison-mean { stroke-width: 3; opacity: .8; }
+  .comparison-station { fill: none; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+  .comparison-station.station-a { stroke: var(--color-red); }
+  .comparison-station.station-b { stroke: var(--color-ink); stroke-dasharray: 8 5; }
   @media (max-width: 720px) {
     .station-panel { padding: 18px; }
     .station-controls, .station-request { align-items: stretch; flex-direction: column; gap: 8px; }
     #station-select { width: 100%; }
     #station-map { height: 350px; margin-top: 14px; }
     #import-form { flex-wrap: wrap; }
+    .comparison-panel { padding: 22px; }
+    .comparison-header, .comparison-stations { align-items: stretch; flex-direction: column; }
+    .comparison-stations label { min-width: 0; }
+    .comparison-toggles { align-items: flex-start; flex-direction: column; }
   }
 }

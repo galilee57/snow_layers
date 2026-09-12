@@ -87,3 +87,16 @@ def test_import_failure_and_invalid_requests(monkeypatch):
         assert client.post('/api/snow-depth/import', json=body).status_code in (400, 404)
     assert client.post('/api/snow-depth/import', json={'station': 'tignes', 'season': '2024-2025'}).status_code == 502
     assert client.get('/api/snow-depth?station=tignes').get_json()['seasons'] == {}
+
+
+def test_stations_have_altitude_categories_and_comparison_contract(tmp_path):
+    from snow_layers.stations import STATIONS_BY_SLUG
+
+    assert {station["altitude_category"] for station in STATIONS_BY_SLUG.values()} == {"basse", "moyenne", "haute"}
+    client = create_app(f"sqlite:///{tmp_path / 'comparison.sqlite'}").test_client()
+    response = client.get('/api/comparison?station=meribel&station=tignes')
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert set(payload["categories"]) == {"basse", "moyenne", "haute"}
+    assert set(payload["stations"]) == {"meribel", "tignes"}
+    assert client.get('/api/comparison?station=meribel').status_code == 400

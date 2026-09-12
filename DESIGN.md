@@ -79,3 +79,16 @@ en page est exprimée par les classes utilitaires directement dans le template.
   tardive ne peut pas réafficher les données d'une autre station.
 - États distincts : chargement, aucune donnée, erreur, simulation Méribel,
   réanalyse locale et import partiel. La sélection est conservée dans l'URL.
+
+## Comparaison inter-stations
+
+- Les stations sont classées selon leur altitude de référence : basse montagne
+  `< 1 200 m`, moyenne montagne `1 200–1 800 m`, haute montagne `> 1 800 m`.
+- La carte utilise respectivement le vert, l'orange et le violet pour les
+  repères ; le repère sélectionné conserve un contour rouge.
+- La comparaison présente une valeur par saison : moyenne de décembre à avril
+  pour chaque station, puis minimum, maximum et moyenne de ces valeurs dans
+  chaque catégorie d'altitude.
+- Deux stations sont choisies indépendamment dans des listes synchronisées.
+  Les statistiques min, max et moy de chaque catégorie ainsi que les deux
+  courbes de station sont masquables individuellement.

@@ -54,5 +54,19 @@ _ROWS = [
     ('ghisoni', 'Ghisoni · Capannelle', 'Corse', 42.077, 9.150, 1580),
 ]
 STATIONS = [dict(zip(('slug', 'name', 'massif', 'latitude', 'longitude', 'elevation_m'), row)) for row in _ROWS]
+
+
+def altitude_category(elevation_m: float) -> str:
+    """Classement utilisé par la carte et les comparaisons (altitude de référence)."""
+    if elevation_m < 1200:
+        return "basse"
+    if elevation_m <= 1800:
+        return "moyenne"
+    return "haute"
+
+
+for station in STATIONS:
+    station["altitude_category"] = altitude_category(station["elevation_m"])
+
 STATIONS_BY_SLUG = {station['slug']: station for station in STATIONS}
-CATALOG_NOTE = 'Catalogue initial non exhaustif · positions et altitudes approximatives · préparé le 10/09/2026'
+CATALOG_NOTE = 'Catalogue initial non exhaustif · altitudes : basse < 1 200 m, moyenne 1 200–1 800 m, haute > 1 800 m · positions approximatives · préparé le 10/09/2026'

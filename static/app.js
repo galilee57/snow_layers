@@ -136,8 +136,8 @@ async function loadData(preferredSeason) {
   }
 }
 
-function pinIcon(selected) {
-  return L.divIcon({ className: "", html: `<div class="station-pin${selected ? " selected" : ""}"></div>`, iconSize: [16, 16], iconAnchor: [8, 8] });
+function pinIcon(selected, category = "") {
+  return L.divIcon({ className: "", html: `<div class="station-pin category-${category}${selected ? " selected" : ""}"></div>`, iconSize: [16, 16], iconAnchor: [8, 8] });
 }
 
 function chooseStation(slug, moveMap = true) {
@@ -149,7 +149,7 @@ function chooseStation(slug, moveMap = true) {
   document.querySelector("#station-details").textContent = `${station.massif} · ≈ ${station.elevation_m} m · ${station.latitude.toFixed(3)}° N, ${station.longitude.toFixed(3)}° E · point de requête approximatif`;
   document.querySelector("#request-status").textContent = "Période : du 1er décembre au 30 avril. Hauteur modélisée, pas un relevé de station.";
   markers.forEach((marker, key) => {
-    marker.setIcon(pinIcon(key === slug));
+    marker.setIcon(pinIcon(key === slug, markers.get(key).stationCategory));
     marker.setZIndexOffset(key === slug ? 1000 : 0);
   });
   if (map && moveMap) { map.setView([station.latitude, station.longitude], Math.max(map.getZoom(), 8)); markers.get(slug).openTooltip(); }
@@ -176,7 +176,8 @@ async function initializeStations() {
       }).on("tileerror", () => { document.querySelector("#map-status").textContent = "Fond de carte indisponible. La liste des stations reste utilisable. " + catalog.note; }).addTo(map);
       stations.forEach((station) => {
         const label = document.createElement("span"); label.textContent = station.name;
-        const marker = L.marker([station.latitude, station.longitude], {icon: pinIcon(false), title: station.name, alt: station.name, keyboard: true}).addTo(map).bindTooltip(label);
+        const marker = L.marker([station.latitude, station.longitude], {icon: pinIcon(false, station.altitude_category), title: station.name, alt: station.name, keyboard: true}).addTo(map).bindTooltip(label);
+        marker.stationCategory = station.altitude_category;
         marker.on("click", () => chooseStation(station.slug));
         markers.set(station.slug, marker);
       });
@@ -186,6 +187,7 @@ async function initializeStations() {
     }
     const requested = new URLSearchParams(location.search).get("station");
     chooseStation(stations.some((station) => station.slug === requested) ? requested : "meribel", false);
+    initializeComparison();
   } catch (error) {
     document.querySelector("#map-status").textContent = error.message;
     clearChart(error.message);
@@ -214,3 +216,74 @@ document.querySelector("#import-form").addEventListener("submit", async (event) 
   } finally { importButton.disabled = false; }
 });
 initializeStations();
+
+const compareA = document.querySelector("#compare-a");
+const compareB = document.querySelector("#compare-b");
+const comparisonSeries = document.querySelector("#comparison-series");
+const comparisonState = new Map([
+  ["basse-min", true], ["basse-max", true], ["basse-mean", true],
+  ["moyenne-min", true], ["moyenne-max", true], ["moyenne-mean", true],
+  ["haute-min", true], ["haute-max", true], ["haute-mean", true],
+  ["station-a", true], ["station-b", true],
+]);
+let comparisonPayload;
+
+function comparisonPath(values, x, y) {
+  const points = values.map((value, index) => value == null ? null : `${x(index).toFixed(1)},${y(value).toFixed(1)}`).filter(Boolean);
+  return points.length ? `M ${points.join(" L ")}` : "";
+}
+
+function drawComparison() {
+  if (!comparisonPayload) return;
+  const seasons = comparisonPayload.seasons;
+  const width = 1000, height = 430, left = 54, right = 18, top = 22, bottom = 50;
+  const values = [];
+  Object.values(comparisonPayload.categories).forEach((rows) => Object.values(rows).forEach((row) => values.push(row.min, row.max)));
+  Object.values(comparisonPayload.stations).forEach((station) => values.push(...Object.values(station.values)));
+  const max = Math.max(50, Math.ceil(Math.max(...values, 0) / 50) * 50);
+  const x = (index) => left + (index / Math.max(1, seasons.length - 1)) * (width - left - right);
+  const y = (value) => top + (1 - value / max) * (height - top - bottom);
+  document.querySelector("#comparison-grid").innerHTML = [0, .25, .5, .75, 1].map((step) => `<line class="comparison-grid-line" x1="${left}" y1="${y(max * step)}" x2="${width - right}" y2="${y(max * step)}"/><text class="comparison-axis-label" x="4" y="${y(max * step) + 4}">${Math.round(max * step)}</text>`).join("");
+  const series = [];
+  const categoryStyles = {basse: "low", moyenne: "mid", haute: "high"};
+  Object.entries(comparisonPayload.categories).forEach(([category, rows]) => {
+    ["min", "max", "mean"].forEach((stat) => {
+      if (!comparisonState.get(`${category}-${stat}`)) return;
+      series.push(`<path class="comparison-${categoryStyles[category]} comparison-${stat}" d="${comparisonPath(seasons.map((season) => rows[season]?.[stat]), x, y)}"><title>${category} montagne · ${stat}</title></path>`);
+    });
+  });
+  [compareA.value, compareB.value].forEach((slug, index) => {
+    if (!comparisonState.get(`station-${index === 0 ? "a" : "b"}`)) return;
+    const station = comparisonPayload.stations[slug];
+    if (station) series.push(`<path class="comparison-station station-${index === 0 ? "a" : "b"}" d="${comparisonPath(seasons.map((season) => station.values[season]), x, y)}"><title>${station.name}</title></path>`);
+  });
+  comparisonSeries.innerHTML = series.join("");
+  document.querySelector("#comparison-axis").innerHTML = seasons.filter((_, index) => index % Math.ceil(seasons.length / 8) === 0 || index === seasons.length - 1).map((season) => `<text class="comparison-axis-label" text-anchor="middle" x="${x(seasons.indexOf(season))}" y="${height - 16}">${season}</text>`).join("");
+  document.querySelector("#comparison-status").textContent = `${seasons.length} saisons comparées · moyenne de décembre à avril · hauteur modélisée en cm.`;
+}
+
+async function initializeComparison() {
+  const options = [...stations].sort((a, b) => a.name.localeCompare(b.name, "fr")).map((station) => new Option(`${station.name} · ${station.altitude_category} montagne`, station.slug));
+  compareA.replaceChildren(...options.map((option) => option.cloneNode(true)));
+  compareB.replaceChildren(...options.map((option) => option.cloneNode(true)));
+  compareA.value = selectedSlug;
+  compareB.value = stations.find((station) => station.slug !== selectedSlug)?.slug || selectedSlug;
+  async function refreshComparison() {
+    if (compareA.value === compareB.value) {
+      document.querySelector("#comparison-status").textContent = "Choisissez deux stations différentes pour comparer leur évolution.";
+      return;
+    }
+    const response = await fetch(`/api/comparison?station=${encodeURIComponent(compareA.value)}&station=${encodeURIComponent(compareB.value)}`);
+    comparisonPayload = response.ok ? await response.json() : null;
+    if (comparisonPayload) drawComparison();
+  }
+  compareA.addEventListener("change", refreshComparison);
+  compareB.addEventListener("change", refreshComparison);
+  document.querySelectorAll(".stat-toggle").forEach((button) => button.addEventListener("click", () => {
+    const key = button.dataset.stat;
+    comparisonState.set(key, !comparisonState.get(key));
+    button.classList.toggle("is-on", comparisonState.get(key));
+    drawComparison();
+  }));
+  await refreshComparison();
+}

@@ -151,6 +151,13 @@ quotidiennes des hauteurs horaires de la réanalyse ERA5-Land Open-Meteo (pas un
 relevé de station). Source, altitude, période et date de collecte sont affichées.
 Les imports incomplets sont signalés et peuvent être redemandés.
 
+Les stations sont regroupées par altitude de référence : basse montagne sous
+1 200 m, moyenne montagne de 1 200 à 1 800 m, haute montagne au-dessus de
+1 800 m. La vue **Deux stations, une même histoire** compare les moyennes
+hivernales des deux stations choisies sur 76 saisons, avec en arrière-plan le
+minimum, le maximum et la moyenne de chaque catégorie. Chaque statistique et
+chaque station peut être masquée indépendamment.
+
 La carte utilise [Leaflet 1.9.4](https://leafletjs.com/examples/quick-start/) via
 unpkg et les tuiles OpenStreetMap, avec attribution. Leur affichage requiert Internet.
 Le catalogue et les séries déjà importées restent locaux. Aucun service payant

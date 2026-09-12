@@ -13,8 +13,10 @@ from datetime import date
 from pathlib import Path
 
 import requests
+from sqlalchemy import func, select
 
 from snow_layers.database import create_session_factory
+from snow_layers.models import SnowObservation, Station
 from snow_layers.open_meteo import ARCHIVE_URL, SOURCE_NAME
 from snow_layers.repository import get_or_create_station, upsert_observations
 from snow_layers.stations import STATIONS, STATIONS_BY_SLUG
@@ -22,6 +24,10 @@ from snow_layers.stations import STATIONS, STATIONS_BY_SLUG
 
 FIRST_SEASON = 1950
 CACHE_DIR = Path("data/raw/open_meteo_archive")
+
+
+def _seasonal_day_count(start: date, end: date) -> int:
+    return sum(1 for ordinal in range((end - start).days + 1) if date.fromordinal(start.toordinal() + ordinal).month in (12, 1, 2, 3, 4))
 
 
 def _cache_path(slug: str, start: date, end: date) -> Path:
@@ -108,8 +114,16 @@ def main() -> None:
         parser.error("La période doit commencer en 1950 et rester croissante.")
 
     start, end = date(args.from_year, 12, 1), date(args.to_year + 1, 4, 30)
-    stations = [STATIONS_BY_SLUG[args.station]] if args.station else STATIONS
     session_factory = create_session_factory()
+    expected_seasonal_days = _seasonal_day_count(start, end)
+    with session_factory() as session:
+        complete = {
+            slug for slug, count in session.execute(
+                select(Station.slug, func.count(SnowObservation.id)).outerjoin(SnowObservation).group_by(Station.slug)
+            ).all() if count >= expected_seasonal_days
+        }
+    stations = [STATIONS_BY_SLUG[args.station]] if args.station else [item for item in STATIONS if item["slug"] not in complete]
+    print(f"{len(complete)} station(s) déjà complètes ; {len(stations)} à vérifier/importer.", flush=True)
     batch_size = max(1, args.batch_size)
     chunk_years = max(1, args.chunk_years)
     for chunk_start in range(args.from_year, args.to_year + 1, chunk_years):

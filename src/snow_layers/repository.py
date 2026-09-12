@@ -72,6 +72,11 @@ def load_seasons(session: Session, station_slug: str = "meribel") -> dict[str, l
     ).scalars()
     seasons: dict[str, list[dict[str, str | float]]] = {}
     for observation in rows:
+        # Une saison comparative couvre l'hiver météorologique retenu par
+        # l'import : décembre à avril. Les gros téléchargements historiques
+        # peuvent aussi contenir les mois d'été entre deux hivers.
+        if observation.observed_on.month not in (12, 1, 2, 3, 4):
+            continue
         seasons.setdefault(season_for(observation.observed_on), []).append(
             {"date": observation.observed_on.isoformat(), "depth_cm": observation.snow_depth_cm}
         )
